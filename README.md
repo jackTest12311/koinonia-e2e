@@ -2,6 +2,15 @@
 
 Playwright + TypeScript + Page Object Model 기반의 E2E 테스트 프로젝트입니다.
 
+> **46 passed / 10 skipped / 0 failed** — Super Admin + Church Admin + Cross-App
+
+## 데모: 교회 라이프사이클 통합 테스트
+
+![church-lifecycle demo](demo.gif)
+
+> 슈퍼어드민에서 교회 생성 → 교회어드민 로그인 성공 → 교회 삭제 → 재로그인 차단까지,
+> 두 개의 독립된 서비스를 단일 테스트에서 검증합니다.
+
 ## 구조
 
 ```
