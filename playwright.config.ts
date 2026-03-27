@@ -19,7 +19,8 @@ export default defineConfig({
   use: {
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: process.env.RECORD ? 'on' : 'retain-on-failure',
+    launchOptions: process.env.RECORD ? { slowMo: 700 } : {},
   },
   projects: [
     // ── Setup projects (로그인 상태 저장) ──────────────────────────

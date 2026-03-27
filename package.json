@@ -11,7 +11,8 @@
     "test:headed": "playwright test --headed",
     "report": "playwright show-report reports/html",
     "save": "npx ts-node scripts/save-report.ts",
-    "test:save": "playwright test && npx ts-node scripts/save-report.ts"
+    "test:save": "playwright test && npx ts-node scripts/save-report.ts",
+    "record:lifecycle": "RECORD=1 playwright test tests/cross/church-lifecycle.spec.ts --project=cross-app --headed"
   },
   "devDependencies": {
     "@playwright/test": "^1.44.0",
