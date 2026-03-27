@@ -1,0 +1,24 @@
+{
+  "name": "koinonia-e2e",
+  "version": "1.0.0",
+  "description": "Koinonia E2E Test Suite (Playwright + TypeScript)",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:super": "playwright test --project=super-admin",
+    "test:church": "playwright test --project=church-admin",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report reports/html",
+    "save": "npx ts-node scripts/save-report.ts",
+    "test:save": "playwright test && npx ts-node scripts/save-report.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0",
+    "@supabase/supabase-js": "^2.99.3",
+    "@types/node": "^20.0.0",
+    "dotenv": "^16.4.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  }
+}
