@@ -1,8 +1,26 @@
 # Koinonia E2E Test Suite
 
-Playwright + TypeScript + Page Object Model 기반의 E2E 테스트 프로젝트입니다.
+> 이 레포지토리는 포트폴리오 목적으로 공개한 E2E 테스트 코드입니다.
+> 교회 커뮤니티 플랫폼 [Koinonia](https://super-admin-orcin.vercel.app)의 슈퍼어드민 / 교회어드민 서비스를 대상으로,
+> 실제 운영 환경과 동일한 URL에서 동작하는 테스트를 작성했습니다.
 
-> **46 passed / 10 skipped / 0 failed** — Super Admin + Church Admin + Cross-App
+Playwright + TypeScript + Page Object Model 기반 · **46 passed / 10 skipped / 0 failed**
+
+---
+
+## 이 프로젝트에서 주목할 부분
+
+실무에서 자주 맞닥뜨리는 문제들을 어떻게 풀었는지에 집중했습니다.
+
+| 포인트 | 파일 | 한 줄 설명 |
+|--------|------|-----------|
+| **크로스앱 통합 테스트** | [`tests/cross/church-lifecycle.spec.ts`](tests/cross/church-lifecycle.spec.ts) | 두 개의 독립 서비스를 단일 테스트에서 상태 변화까지 검증 |
+| **OTP 테스트 처리** | [`tests/church-admin/password.spec.ts`](tests/church-admin/password.spec.ts) | Rate limit 우회(Route Mock) + Admin API로 실제 OTP 획득 |
+| **세션 격리** | [`playwright.config.ts`](playwright.config.ts) | 로그아웃 테스트가 다른 테스트 세션을 오염시키지 않도록 project 분리 |
+| **Page Object Model** | [`pages/`](pages/) | 로케이터·액션을 화면 단위로 캡슐화해 spec 파일의 의도를 명확하게 |
+| **테스트 데이터 격리** | [`fixtures/supabaseAdmin.ts`](fixtures/supabaseAdmin.ts) | 매 실행마다 유니크 코드 생성, afterAll로 Auth 유저·DB 자동 정리 |
+
+---
 
 ## 데모: 교회 라이프사이클 통합 테스트
 
