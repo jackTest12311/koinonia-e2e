@@ -1,6 +1,6 @@
 /**
  * Supabase Admin 클라이언트 헬퍼
- * E2E 테스트에서 이메일 수신 없이 OTP를 직접 생성
+ * E2E 테스트에서 인증/정리 관련 보조 작업을 수행
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -19,9 +19,7 @@ function getAdminClient() {
 }
 
 /**
- * 이메일로 Magic Link OTP를 생성하고 코드를 반환
- * 페이지에서 "인증번호 받기" 클릭 후 이 함수를 호출해야 함
- * (generateLink가 이전 OTP를 대체하므로 반환값을 사용)
+ * 테스트 환경에서 사용할 인증 코드를 준비
  */
 export async function generateOtp(email: string): Promise<string> {
   const supabase = getAdminClient();

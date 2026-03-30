@@ -8,7 +8,7 @@
  * - 슈퍼어드민: super-admin-setup storageState 사용 (이미 로그인된 상태)
  * - 교회어드민: 동일 브라우저 컨텍스트에서 다른 도메인으로 이동 (쿠키 분리)
  * - 교회 코드에 실행 ID를 붙여 매 실행마다 유니크하게 생성
- * - 테스트 후 생성한 교회 + Auth 유저를 Admin API로 정리
+ * - 테스트 후 생성 데이터 정리
  */
 
 import { test, expect } from '@playwright/test';
@@ -94,7 +94,7 @@ test.describe('교회 라이프사이클 통합 테스트', () => {
     await page.getByRole('button', { name: /로그인/ }).click();
     await page.waitForLoadState('networkidle');
 
-    // 로그인 실패: 교회 삭제 시 church_admins.is_active = false로 변경되어 차단됨
+    // 로그인 실패 메시지 확인
     await expect(page).toHaveURL(`${CHURCH_ADMIN_URL}/login`, { timeout: 10000 });
     await expect(page.getByText(/어드민 계정이 아니거나 비활성화/)).toBeVisible({ timeout: 5000 });
   });

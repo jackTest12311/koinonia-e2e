@@ -1,10 +1,6 @@
 /**
  * Church Admin - 비밀번호 찾기 / 재설정 테스트
  * TC: KNA_CA_007 ~ KNA_CA_009
- *
- * signInWithOtp은 Supabase 레이트 리밋(3회/시간)을 우회하기 위해
- * 브라우저 요청을 route mock으로 200 응답 처리하고,
- * Admin API generateLink로 실제 OTP를 획득한다.
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -16,7 +12,7 @@ test.use({ storageState: { cookies: [], origins: [] } }); // 세션 초기화
 const ORIGINAL_PASSWORD = testAccounts.churchOwner.password;
 const TEMP_PASSWORD = 'TestTemp1234!';
 
-/** signInWithOtp 레이트 리밋 우회: 브라우저 요청만 mock */
+/** 테스트 환경에서 인증 요청 흐름을 안정적으로 고정 */
 async function mockOtpSend(page: Page) {
   await page.route('**/auth/v1/otp', (route) =>
     route.fulfill({
@@ -51,7 +47,7 @@ test.describe('교회어드민 비밀번호 찾기', () => {
     await page.getByRole('button', { name: '인증번호 받기' }).click();
     await expect(page.getByText('인증번호 입력')).toBeVisible({ timeout: 10000 });
 
-    // Admin API로 실제 OTP 획득 (브라우저 mock과 별개로 진짜 토큰 생성)
+    // 테스트 전용 헬퍼로 인증 코드를 준비
     const otp = await generateOtp(testAccounts.churchOwner.email);
 
     // 2단계: OTP 입력
