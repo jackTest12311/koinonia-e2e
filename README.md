@@ -1,24 +1,121 @@
 # Koinonia E2E Test Suite
 
-> 이 레포지토리는 포트폴리오 목적으로 공개한 E2E 테스트 코드입니다.
-> 교회 커뮤니티 플랫폼 [Koinonia](https://super-admin-orcin.vercel.app)의 슈퍼어드민 / 교회어드민 서비스를 대상으로,
-> 실제 운영 환경과 동일한 URL에서 동작하는 테스트를 작성했습니다.
+이 프로젝트는 교회 커뮤니티 플랫폼 **Koinonia**의
+슈퍼어드민 / 교회어드민 서비스를 대상으로 작성한 E2E 테스트 자동화 코드입니다.
 
-Playwright + TypeScript + Page Object Model 기반 · **46 passed / 10 skipped / 0 failed**
+실제 운영 환경과 동일한 URL에서 테스트를 수행하며,
+단순 기능 검증을 넘어서 **실무에서 발생할 수 있는 문제를 어떻게 테스트로 검증할 수 있는지**에 초점을 두었습니다.
 
 ---
 
-## 이 프로젝트에서 주목할 부분
+## 📌 프로젝트 목적
 
-실무에서 자주 맞닥뜨리는 문제들을 어떻게 풀었는지에 집중했습니다.
+QA 업무를 수행하면서 다음과 같은 상황을 자주 경험했습니다.
 
-| 포인트 | 파일 | 한 줄 설명 |
-|--------|------|-----------|
-| **크로스앱 통합 테스트** | [`tests/cross/church-lifecycle.spec.ts`](tests/cross/church-lifecycle.spec.ts) | 두 개의 독립 서비스를 단일 테스트에서 상태 변화까지 검증 |
-| **OTP 테스트 처리** | [`tests/church-admin/password.spec.ts`](tests/church-admin/password.spec.ts) | Rate limit 우회(Route Mock) + Admin API로 실제 OTP 획득 |
-| **세션 격리** | [`playwright.config.ts`](playwright.config.ts) | 로그아웃 테스트가 다른 테스트 세션을 오염시키지 않도록 project 분리 |
-| **Page Object Model** | [`pages/`](pages/) | 로케이터·액션을 화면 단위로 캡슐화해 spec 파일의 의도를 명확하게 |
-| **테스트 데이터 격리** | [`fixtures/supabaseAdmin.ts`](fixtures/supabaseAdmin.ts) | 매 실행마다 유니크 코드 생성, afterAll로 Auth 유저·DB 자동 정리 |
+* 서비스가 분리되어 있어 기능은 정상인데 **전체 흐름이 깨지는 문제**
+* 인증(OTP)과 같이 테스트가 어려운 영역
+* 테스트 간 데이터/세션이 서로 영향을 주는 문제
+
+이 프로젝트는 위와 같은 문제를 **E2E 테스트로 안정적으로 검증하는 방법**을 고민하며 구성했습니다.
+
+---
+
+## 🛠 기술 스택
+
+* Playwright
+* TypeScript
+* Page Object Model (POM)
+
+---
+
+## 🔍 주요 구현 포인트
+
+### 1. 크로스앱 통합 테스트
+
+* 두 개의 독립된 서비스(슈퍼어드민 / 교회어드민)를 하나의 테스트에서 검증
+* 교회 생성 → 로그인 → 삭제 → 재로그인 차단까지
+  **서비스 간 상태 변화 흐름을 end-to-end로 확인**
+
+👉 단일 서비스 테스트로는 놓칠 수 있는 문제를 검증할 수 있도록 구성했습니다.
+
+---
+
+### 2. OTP 인증 테스트 처리
+
+* Route Mock을 활용해 rate limit 문제를 우회
+* Admin API를 통해 실제 OTP 값을 가져와 테스트에 사용
+
+👉 외부 의존성(이메일 수신 등)에 영향을 받지 않는 테스트를 구성했습니다.
+
+---
+
+### 3. 테스트 데이터 격리
+
+* 실행 시마다 유니크한 데이터를 생성
+* 테스트 종료 후 Auth 유저 및 DB 데이터 자동 정리
+
+👉 반복 실행 및 병렬 실행 환경에서도 안정적으로 동작하도록 구성했습니다.
+
+---
+
+### 4. 세션 격리
+
+* 로그아웃 테스트가 다른 테스트에 영향을 주지 않도록 project 분리
+* storageState를 활용해 로그인 상태 재사용
+
+👉 테스트 간 간섭을 최소화했습니다.
+
+---
+
+### 5. Page Object Model 적용
+
+* 화면 단위로 로케이터와 액션을 분리
+* 테스트 코드에서는 흐름 중심으로 읽히도록 구성
+
+👉 테스트의 유지보수성과 가독성을 고려했습니다.
+
+---
+
+## 📂 프로젝트 구조
+
+```
+e2e/
+├── pages/        # Page Object Models
+├── tests/        # 테스트 시나리오
+├── fixtures/     # 테스트 데이터 및 헬퍼
+├── playwright.config.ts
+└── package.json
+```
+
+---
+
+## 🎯 테스트 결과
+
+* 46 passed / 10 skipped / 0 failed
+
+---
+
+## 🚀 실행 방법
+
+```bash
+npm install
+npx playwright install chromium
+npm test
+```
+
+---
+
+## 💬 정리
+
+이 프로젝트는 단순히 테스트를 작성하는 것에 그치지 않고,
+
+* 실제 서비스 환경에서 발생할 수 있는 문제를 어떻게 재현하고
+* 이를 안정적으로 검증할 수 있는 테스트 구조를 만드는지
+
+에 대해 고민한 결과물입니다.
+
+특히 **서비스 간 흐름 검증, 인증 처리, 테스트 격리**와 같은
+실무에서 중요하다고 생각하는 부분을 중심으로 구성했습니다.
 
 ---
 
@@ -28,136 +125,3 @@ Playwright + TypeScript + Page Object Model 기반 · **46 passed / 10 skipped /
 
 > 슈퍼어드민에서 교회 생성 → 교회어드민 로그인 성공 → 교회 삭제 → 재로그인 차단까지,
 > 두 개의 독립된 서비스를 단일 테스트에서 검증합니다.
-
-## 구조
-
-```
-e2e/
-├── pages/                    # Page Object Models
-│   ├── super-admin/
-│   │   ├── LoginPage.ts
-│   │   ├── DashboardPage.ts
-│   │   ├── ChurchesPage.ts
-│   │   └── ReportsPage.ts
-│   └── church-admin/
-│       ├── LoginPage.ts
-│       ├── DashboardPage.ts
-│       ├── MembersPage.ts
-│       └── BulletinsPage.ts
-├── tests/
-│   ├── super-admin/
-│   │   ├── auth.setup.ts       # 로그인 상태 저장 (setup)
-│   │   ├── auth.spec.ts        # 인증 테스트
-│   │   ├── churches.spec.ts    # 교회 관리 테스트
-│   │   ├── reports.spec.ts     # 신고 관리 테스트
-│   │   └── password.spec.ts    # 비밀번호 찾기 (OTP)
-│   ├── church-admin/
-│   │   ├── auth.setup.ts
-│   │   ├── auth.spec.ts        # 인증 테스트
-│   │   ├── members.spec.ts     # 교인 관리 테스트
-│   │   ├── bulletins.spec.ts   # 주보 관리 테스트
-│   │   └── password.spec.ts    # 비밀번호 찾기 (OTP)
-│   └── cross/
-│       └── church-lifecycle.spec.ts  # 크로스앱 통합 테스트
-├── fixtures/
-│   ├── testAccounts.ts         # 테스트 계정 (env vars로 주입)
-│   └── supabaseAdmin.ts        # Admin API 헬퍼 (OTP 생성, 데이터 정리)
-├── .env.example
-├── playwright.config.ts
-└── package.json
-```
-
-## 시작하기
-
-### 1. 의존성 설치
-
-```bash
-cd e2e
-npm install
-npx playwright install chromium
-```
-
-### 2. 환경 변수 설정
-
-```bash
-cp .env.example .env.local
-# .env.local 파일을 열어 실제 값으로 채우기
-```
-
-### 3. 앱 실행 (별도 터미널)
-
-```bash
-# church-admin (port 3000)
-cd ../church-admin && npm run dev
-
-# super-admin (port 3001)
-cd ../super-admin && npm run dev -- -p 3001
-```
-
-### 4. 테스트 실행
-
-```bash
-# 전체 테스트
-npm test
-
-# super-admin만
-npm run test:super
-
-# church-admin만
-npm run test:church
-
-# UI 모드 (시각적 디버깅)
-npm run test:ui
-
-# 헤드리스 OFF (브라우저 화면 보면서 실행)
-npm run test:headed
-
-# 리포트 보기
-npm run report
-```
-
-## 테스트 목록
-
-### Super Admin
-
-| TC ID | 파일 | 내용 |
-|-------|------|------|
-| KNA_SA_001~005 | auth.spec.ts | 로그인/로그아웃/접근 제어 |
-| KNA_SA_006~008 | password.spec.ts | OTP 비밀번호 찾기 3단계 |
-| KNA_SA_010~022 | churches.spec.ts | 대시보드, 교회 목록, 등록, 상세, 활성/정지/삭제 |
-| KNA_SA_020~025 | reports.spec.ts | 신고 목록, 필터, 처리, 기각 |
-
-### Church Admin
-
-| TC ID | 파일 | 내용 |
-|-------|------|------|
-| KNA_CA_001~006 | auth.spec.ts | 로그인/로그아웃/OWNER·STAFF 권한 분리 |
-| KNA_CA_007~009 | password.spec.ts | OTP 비밀번호 찾기 3단계 |
-| KNA_CA_010~016 | members.spec.ts | 교인 목록, 승인, 거절, OPERATOR 권한 |
-| KNA_CA_020~027 | bulletins.spec.ts | 주보 업로드(PDF/이미지), 삭제, 유효성 검사 |
-
-### Cross-App 통합 테스트
-
-| TC ID | 파일 | 내용 |
-|-------|------|------|
-| KNA_CROSS_001 | church-lifecycle.spec.ts | 슈퍼어드민에서 교회 생성 → 교회어드민 로그인 성공 → 교회 삭제 → 재로그인 차단 검증 |
-
-> **주목할 포인트**: 단일 테스트 내에서 두 개의 독립된 서비스(슈퍼어드민/교회어드민)를 오가며 상태 변화를 검증합니다. `RUN_ID` 기반 유니크 코드로 병렬 실행 충돌을 방지하고, `afterAll`로 생성한 Auth 유저와 DB 데이터를 자동 정리합니다.
-
-## 주요 기법
-
-| 기법 | 적용 위치 | 설명 |
-|------|-----------|------|
-| Page Object Model | `pages/` | 화면별 로케이터/액션 캡슐화 |
-| storageState 재사용 | `auth.setup.ts` | 로그인 세션을 JSON으로 저장 → 매 테스트마다 로그인 생략 |
-| Route Mock | `password.spec.ts` | OTP 요청을 mock 200으로 처리해 rate limit 우회 |
-| Admin API OTP | `fixtures/supabaseAdmin.ts` | `generateLink()`로 실제 OTP 코드 획득 (이메일 수신 불필요) |
-| 크로스앱 통합 | `tests/cross/` | 한 브라우저 컨텍스트에서 두 도메인을 이동하며 연동 검증 |
-| 테스트 격리 | `playwright.config.ts` | 로그아웃 테스트를 별도 project로 분리해 세션 오염 방지 |
-
-## 주의 사항
-
-- `fixtures/*.json` (세션 토큰)은 `.gitignore` 처리됨
-- `SUPABASE_SERVICE_ROLE_KEY`는 OTP 생성 및 테스트 데이터 정리에 사용
-- 교회 등록 테스트(KNA_SA_015, KNA_CROSS_001)는 실제 Auth 유저를 생성하므로 테스트 환경에서 실행 권장
-- `CHURCH_ADMIN_STAFF_EMAIL` 미설정 시 STAFF 관련 테스트 자동 skip
