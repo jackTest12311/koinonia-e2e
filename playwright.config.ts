@@ -90,13 +90,26 @@ export default defineConfig({
       },
     },
     {
-      // 크로스앱 통합 테스트: 슈퍼어드민 + 교회어드민 연계
+      // 크로스앱 통합 테스트: 슈퍼어드민 storageState (church-lifecycle, rls)
       name: 'cross-app',
       testDir: './tests/cross',
+      testIgnore: ['**/member-lifecycle.spec.ts'],
       dependencies: ['super-admin-setup'],
       use: {
         ...devices['Desktop Chrome'],
         storageState: './fixtures/super-admin-auth.json',
+      },
+    },
+    {
+      // 크로스앱 통합 테스트: 교회어드민 storageState (member-lifecycle)
+      name: 'cross-app-ca',
+      testDir: './tests/cross',
+      testMatch: ['**/member-lifecycle.spec.ts'],
+      dependencies: ['church-admin-setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env.CHURCH_ADMIN_URL ?? 'http://localhost:3000',
+        storageState: './fixtures/church-admin-auth.json',
       },
     },
   ],
