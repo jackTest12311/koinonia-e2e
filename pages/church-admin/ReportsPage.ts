@@ -2,7 +2,7 @@ import { type Page, type Locator, expect } from '@playwright/test';
 
 type ReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED' | 'ALL';
 
-export class SuperAdminReportsPage {
+export class ChurchAdminReportsPage {
   readonly page: Page;
   readonly heading: Locator;
   readonly tableRows: Locator;
@@ -29,7 +29,8 @@ export class SuperAdminReportsPage {
       DISMISSED: '기각',
       ALL: '전체',
     };
-    await this.page.getByRole('button', { name: labelMap[status] }).click();
+    // 필터 탭은 행 액션 버튼보다 DOM 앞에 위치 → .first()로 탭 버튼만 타겟
+    await this.page.getByRole('button', { name: labelMap[status] }).first().click();
     await this.page.waitForTimeout(300);
   }
 
@@ -46,7 +47,7 @@ export class SuperAdminReportsPage {
   }
 
   async getPendingCount(): Promise<number> {
-    const tab = this.page.getByRole('button', { name: /대기 \((\d+)\)/ });
+    const tab = this.page.getByRole('button', { name: /대기/ });
     const text = await tab.innerText();
     const match = text.match(/\((\d+)\)/);
     return match ? parseInt(match[1]) : 0;
@@ -58,9 +59,5 @@ export class SuperAdminReportsPage {
 
   async expectReportVisible(title: string) {
     await expect(this.page.getByText(title)).toBeVisible();
-  }
-
-  async expectEmptyMessage() {
-    await expect(this.page.getByText('신고 내역이 없습니다')).toBeVisible();
   }
 }
