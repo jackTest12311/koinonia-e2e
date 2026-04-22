@@ -147,6 +147,126 @@ export async function cleanupE2EReportData(churchCode: string): Promise<void> {
   }
 }
 
+// ── STAFF 어드민 계정 헬퍼 ────────────────────────────────────────
+
+interface TestStaffData {
+  userId: string;
+  email: string;
+  password: string;
+}
+
+/**
+ * 테스트용 STAFF church_admin 계정 생성
+ */
+export async function createTestStaffAdmin(churchCode: string): Promise<TestStaffData> {
+  const supabase = getAdminClient();
+
+  const { data: church } = await supabase
+    .from('churches')
+    .select('id')
+    .eq('code', churchCode)
+    .single();
+  if (!church) throw new Error(`교회를 찾을 수 없습니다: ${churchCode}`);
+
+  const email = `e2e_staff_${Date.now()}@test.com`;
+  const password = 'Test1234!@';
+
+  const { data: authUser, error } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (error || !authUser?.user) throw new Error(`STAFF 유저 생성 실패: ${error?.message}`);
+
+  const userId = authUser.user.id;
+
+  // profile 트리거 대기 (최대 2초)
+  for (let i = 0; i < 4; i++) {
+    const { data: profile } = await supabase.from('profiles').select('id').eq('id', userId).maybeSingle();
+    if (profile) break;
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  await supabase.from('church_admins').insert({ user_id: userId, church_id: church.id, role: 'STAFF' });
+
+  return { userId, email, password };
+}
+
+/**
+ * 테스트용 STAFF 계정 삭제
+ */
+export async function deleteTestStaffAdmin(userId: string): Promise<void> {
+  const supabase = getAdminClient();
+  await supabase.from('church_admins').delete().eq('user_id', userId);
+  await supabase.auth.admin.deleteUser(userId);
+}
+
+// ── 멤버십 테스트 데이터 헬퍼 ────────────────────────────────────
+
+interface TestMemberData {
+  userId: string;
+  membershipId?: string;
+}
+
+/**
+ * 테스트용 교인 계정 + 멤버십 생성
+ */
+export async function createTestMember(
+  churchCode: string,
+  status: 'PENDING' | 'APPROVED',
+  role: 'MEMBER' | 'OPERATOR' = 'MEMBER',
+): Promise<TestMemberData> {
+  const supabase = getAdminClient();
+
+  const { data: church } = await supabase
+    .from('churches')
+    .select('id')
+    .eq('code', churchCode)
+    .single();
+  if (!church) throw new Error(`교회를 찾을 수 없습니다: ${churchCode}`);
+
+  const email = `e2e_member_${Date.now()}_${Math.random().toString(36).slice(2, 6)}@test.com`;
+
+  const { data: authUser, error } = await supabase.auth.admin.createUser({
+    email,
+    password: 'Test1234!@',
+    email_confirm: true,
+  });
+  if (error || !authUser?.user) throw new Error(`테스트 유저 생성 실패: ${error?.message}`);
+
+  const userId = authUser.user.id;
+
+  // profile 트리거 대기
+  for (let i = 0; i < 4; i++) {
+    const { data: profile } = await supabase.from('profiles').select('id').eq('id', userId).maybeSingle();
+    if (profile) break;
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  const { data: membership } = await supabase
+    .from('memberships')
+    .insert({
+      user_id: userId,
+      church_id: church.id,
+      status,
+      role,
+      name: `E2E테스터_${Date.now()}`,
+    })
+    .select('id')
+    .single();
+
+  return { userId, membershipId: membership?.id };
+}
+
+/**
+ * 테스트 교인 계정 삭제
+ */
+export async function deleteTestMember(userId: string): Promise<void> {
+  const supabase = getAdminClient();
+  await supabase.from('memberships').delete().eq('user_id', userId);
+  await supabase.auth.admin.deleteUser(userId);
+}
+
 // ──────────────────────────────────────────────────────────────────
 
 /**

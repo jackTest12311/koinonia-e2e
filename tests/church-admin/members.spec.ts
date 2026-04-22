@@ -1,4 +1,3 @@
-import { testAccounts } from '../../fixtures/testAccounts';
 /**
  * Church Admin - 교인 관리 테스트
  * TC: KNA_CA_010 ~ KNA_CA_018
@@ -7,6 +6,104 @@ import { testAccounts } from '../../fixtures/testAccounts';
 import { test, expect } from '@playwright/test';
 import { MembersPage } from '../../pages/church-admin/MembersPage';
 import { ChurchAdminDashboardPage } from '../../pages/church-admin/DashboardPage';
+import { createTestMember, deleteTestMember } from '../../fixtures/supabaseAdmin';
+
+test.describe.configure({ mode: 'serial' });
+
+// ─── API 데이터 보장 — CA_012~015 ────────────────────────────────────
+test.describe('교회어드민 교인 관리 — 승인/권한 (API 데이터 보장)', () => {
+  const churchCode = process.env.TEST_CHURCH_CODE ?? 'TEST_CHURCH';
+  let pendingMember1: { userId: string };
+  let pendingMember2: { userId: string };
+  let approvedMember: { userId: string };
+
+  test.beforeAll(async () => {
+    [pendingMember1, pendingMember2, approvedMember] = await Promise.all([
+      createTestMember(churchCode, 'PENDING'),
+      createTestMember(churchCode, 'PENDING'),
+      createTestMember(churchCode, 'APPROVED', 'MEMBER'),
+    ]);
+  });
+
+  test.afterAll(async () => {
+    await Promise.all([
+      deleteTestMember(pendingMember1.userId).catch(() => {}),
+      deleteTestMember(pendingMember2.userId).catch(() => {}),
+      deleteTestMember(approvedMember.userId).catch(() => {}),
+    ]);
+  });
+
+  test('KNA_CA_012 | 가입 신청 승인 → 상태 "APPROVED" 변경', async ({ page }) => {
+    const membersPage = new MembersPage(page);
+    await membersPage.goto();
+    await membersPage.clickFilterTab('PENDING');
+
+    const pendingRows = await membersPage.getVisibleRowCount();
+    expect(pendingRows).toBeGreaterThan(0);
+
+    const firstRow = page.getByRole('row').filter({ hasNot: page.getByRole('columnheader') }).first();
+    const memberName = await firstRow.locator('td').first().innerText();
+
+    await firstRow.getByRole('button', { name: /승인/ }).click();
+    await page.waitForTimeout(500);
+
+    await membersPage.clickFilterTab('ALL');
+    await expect(page.getByRole('row', { name: new RegExp(memberName) })).toBeVisible();
+  });
+
+  test('KNA_CA_013 | 가입 신청 거절 → confirm 다이얼로그 → 상태 "REJECTED"', async ({ page }) => {
+    const membersPage = new MembersPage(page);
+    await membersPage.goto();
+    await membersPage.clickFilterTab('PENDING');
+
+    const pendingRows = await membersPage.getVisibleRowCount();
+    expect(pendingRows).toBeGreaterThan(0);
+
+    const firstRow = page.getByRole('row').filter({ hasNot: page.getByRole('columnheader') }).first();
+    page.once('dialog', (dialog) => dialog.accept());
+    await firstRow.getByRole('button', { name: /거절/ }).click();
+    await page.waitForTimeout(500);
+
+    await membersPage.clickFilterTab('PENDING');
+    const afterCount = await membersPage.getVisibleRowCount();
+    expect(afterCount).toBeLessThan(pendingRows);
+  });
+
+  test('KNA_CA_014 | 교인 → OPERATOR 권한 부여', async ({ page }) => {
+    const membersPage = new MembersPage(page);
+    await membersPage.goto();
+    await membersPage.clickFilterTab('MEMBER');
+
+    const memberRows = await membersPage.getVisibleRowCount();
+    expect(memberRows).toBeGreaterThan(0);
+
+    const firstRow = page.getByRole('row').filter({ hasNot: page.getByRole('columnheader') }).first();
+    page.once('dialog', (dialog) => dialog.accept());
+    await firstRow.getByRole('button', { name: /관리자로/ }).click();
+    await page.waitForTimeout(500);
+
+    await membersPage.clickFilterTab('OPERATOR');
+    const operatorCount = await membersPage.getVisibleRowCount();
+    expect(operatorCount).toBeGreaterThan(0);
+  });
+
+  test('KNA_CA_015 | OPERATOR → 일반 교인 권한 해제', async ({ page }) => {
+    const membersPage = new MembersPage(page);
+    await membersPage.goto();
+    await membersPage.clickFilterTab('OPERATOR');
+
+    const operatorRows = await membersPage.getVisibleRowCount();
+    expect(operatorRows).toBeGreaterThan(0);
+
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.getByRole('row').filter({ hasNot: page.getByRole('columnheader') }).first()
+      .getByRole('button', { name: /교인으로/ }).click();
+    await page.waitForTimeout(500);
+
+    const afterCount = await membersPage.getVisibleRowCount();
+    expect(afterCount).toBeLessThan(operatorRows);
+  });
+});
 
 test.describe('교회어드민 교인 관리 (OWNER 권한 필요)', () => {
   test('KNA_CA_010 | 교인 관리 페이지 진입 → 테이블 렌더링', async ({ page }) => {
@@ -33,93 +130,6 @@ test.describe('교회어드민 교인 관리 (OWNER 권한 필요)', () => {
     const hasEmpty = await page.getByText(/없습니다/).isVisible().catch(() => false);
     const hasBtns = await rejectBtns.count() > 0;
     expect(hasBtns || hasEmpty).toBe(true);
-  });
-
-  test('KNA_CA_012 | 가입 신청 승인 → 상태 "APPROVED" 변경', async ({ page }) => {
-    const membersPage = new MembersPage(page);
-    await membersPage.goto();
-    await membersPage.clickFilterTab('PENDING');
-
-    const pendingRows = await membersPage.getVisibleRowCount();
-    if (pendingRows === 0) {
-      test.skip();
-      return;
-    }
-
-    const firstRow = page.getByRole('row').filter({ hasNot: page.getByRole('columnheader') }).first();
-    const memberName = await firstRow.locator('td').first().innerText();
-
-    await firstRow.getByRole('button', { name: /승인/ }).click();
-    await page.waitForTimeout(500);
-
-    // 승인 후 해당 row의 상태 뱃지 확인
-    await membersPage.clickFilterTab('ALL');
-    const memberRow = page.getByRole('row', { name: new RegExp(memberName) });
-    await expect(memberRow).toBeVisible();
-  });
-
-  test('KNA_CA_013 | 가입 신청 거절 → confirm 다이얼로그 → 상태 "REJECTED"', async ({ page }) => {
-    const membersPage = new MembersPage(page);
-    await membersPage.goto();
-    await membersPage.clickFilterTab('PENDING');
-
-    const pendingRows = await membersPage.getVisibleRowCount();
-    if (pendingRows === 0) {
-      test.skip();
-      return;
-    }
-
-    const firstRow = page.getByRole('row').filter({ hasNot: page.getByRole('columnheader') }).first();
-    page.once('dialog', (dialog) => dialog.accept());
-    await firstRow.getByRole('button', { name: /거절/ }).click();
-    await page.waitForTimeout(500);
-
-    // 거절 후 해당 row는 PENDING 탭에서 사라짐
-    await membersPage.clickFilterTab('PENDING');
-    const afterCount = await membersPage.getVisibleRowCount();
-    expect(afterCount).toBeLessThan(pendingRows);
-  });
-
-  test('KNA_CA_014 | 교인 → OPERATOR 권한 부여', async ({ page }) => {
-    const membersPage = new MembersPage(page);
-    await membersPage.goto();
-    await membersPage.clickFilterTab('MEMBER');
-
-    const memberRows = await membersPage.getVisibleRowCount();
-    if (memberRows === 0) {
-      test.skip();
-      return;
-    }
-
-    const firstRow = page.getByRole('row').filter({ hasNot: page.getByRole('columnheader') }).first();
-    page.once('dialog', (dialog) => dialog.accept());
-    await firstRow.getByRole('button', { name: /관리자로/ }).click();
-    await page.waitForTimeout(500);
-
-    // OPERATOR 탭에서 확인
-    await membersPage.clickFilterTab('OPERATOR');
-    const operatorCount = await membersPage.getVisibleRowCount();
-    expect(operatorCount).toBeGreaterThan(0);
-  });
-
-  test('KNA_CA_015 | OPERATOR → 일반 교인 권한 해제', async ({ page }) => {
-    const membersPage = new MembersPage(page);
-    await membersPage.goto();
-    await membersPage.clickFilterTab('OPERATOR');
-
-    const operatorRows = await membersPage.getVisibleRowCount();
-    if (operatorRows === 0) {
-      test.skip();
-      return;
-    }
-
-    page.once('dialog', (dialog) => dialog.accept());
-    await page.getByRole('row').filter({ hasNot: page.getByRole('columnheader') }).first()
-      .getByRole('button', { name: /교인으로/ }).click();
-    await page.waitForTimeout(500);
-
-    const afterCount = await membersPage.getVisibleRowCount();
-    expect(afterCount).toBeLessThan(operatorRows);
   });
 
   test('KNA_CA_016 | 대시보드 → 교인 관리 "전체 보기" 링크', async ({ page }) => {

@@ -29,42 +29,6 @@ test.describe('슈퍼어드민 신고 관리', () => {
     await expect(allTab).toHaveClass(/bg-blue-600/);
   });
 
-  test('KNA_SA_032 | 신고 처리 → 상태 "처리 완료"로 변경', async ({ page }) => {
-    const reportsPage = new SuperAdminReportsPage(page);
-    await reportsPage.goto();
-    await reportsPage.expectLoaded();
-
-    const pendingCount = await reportsPage.getPendingCount();
-    if (pendingCount === 0) {
-      test.skip();
-      return;
-    }
-
-    const beforeCount = await reportsPage.getPendingCount();
-    await reportsPage.resolveFirstReport();
-    const afterCount = await reportsPage.getPendingCount();
-
-    expect(afterCount).toBe(beforeCount - 1);
-  });
-
-  test('KNA_SA_033 | 신고 기각 → 상태 "기각"으로 변경', async ({ page }) => {
-    const reportsPage = new SuperAdminReportsPage(page);
-    await reportsPage.goto();
-    await reportsPage.expectLoaded();
-
-    const pendingCount = await reportsPage.getPendingCount();
-    if (pendingCount === 0) {
-      test.skip();
-      return;
-    }
-
-    const beforeCount = await reportsPage.getPendingCount();
-    await reportsPage.dismissFirstReport();
-    const afterCount = await reportsPage.getPendingCount();
-
-    expect(afterCount).toBe(beforeCount - 1);
-  });
-
   test('KNA_SA_034 | "처리 완료" 탭에서 PENDING 상태 row 미노출', async ({ page }) => {
     const reportsPage = new SuperAdminReportsPage(page);
     await reportsPage.goto();
@@ -92,15 +56,51 @@ test.describe('슈퍼어드민 신고 관리', () => {
 // ─── API 기반 — 데이터 보장 테스트 ────────────────────────────────────
 test.describe('슈퍼어드민 신고 관리 (API 데이터 보장)', () => {
   let testData: Awaited<ReturnType<typeof createTestReportData>>;
+  let resolveData: Awaited<ReturnType<typeof createTestReportData>>;
+  let dismissData: Awaited<ReturnType<typeof createTestReportData>>;
 
   test.beforeAll(async () => {
     const churchCode = process.env.TEST_CHURCH_CODE ?? 'TEST_CHURCH';
     await cleanupE2EReportData(churchCode);
-    testData = await createTestReportData(churchCode);
+    [testData, resolveData, dismissData] = await Promise.all([
+      createTestReportData(churchCode),
+      createTestReportData(churchCode),
+      createTestReportData(churchCode),
+    ]);
   });
 
   test.afterAll(async () => {
-    if (testData) await deleteTestReportData(testData);
+    await Promise.all([
+      testData && deleteTestReportData(testData),
+      resolveData && deleteTestReportData(resolveData).catch(() => {}),
+      dismissData && deleteTestReportData(dismissData).catch(() => {}),
+    ]);
+  });
+
+  test('KNA_SA_032 | 신고 처리 → 상태 "처리 완료"로 변경', async ({ page }) => {
+    const reportsPage = new SuperAdminReportsPage(page);
+    await reportsPage.goto();
+    await reportsPage.clickFilterTab('PENDING');
+
+    const before = await reportsPage.getPendingCount();
+    await reportsPage.resolveFirstReport();
+    const after = await reportsPage.getPendingCount();
+
+    expect(after).toBe(before - 1);
+    resolveData = null as any; // afterAll에서 이미 처리됨
+  });
+
+  test('KNA_SA_033 | 신고 기각 → 상태 "기각"으로 변경', async ({ page }) => {
+    const reportsPage = new SuperAdminReportsPage(page);
+    await reportsPage.goto();
+    await reportsPage.clickFilterTab('PENDING');
+
+    const before = await reportsPage.getPendingCount();
+    await reportsPage.dismissFirstReport();
+    const after = await reportsPage.getPendingCount();
+
+    expect(after).toBe(before - 1);
+    dismissData = null as any; // afterAll에서 이미 처리됨
   });
 
   test('KNA_SA_036 | 신고된 글 내용이 목록에 노출됨', async ({ page }) => {

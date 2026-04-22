@@ -7,6 +7,7 @@ import { test, expect } from '@playwright/test';
 import { ChurchAdminLoginPage } from '../../pages/church-admin/LoginPage';
 import { ChurchAdminDashboardPage } from '../../pages/church-admin/DashboardPage';
 import { testAccounts } from '../../fixtures/testAccounts';
+import { createTestStaffAdmin, deleteTestStaffAdmin } from '../../fixtures/supabaseAdmin';
 
 test.use({ storageState: { cookies: [], origins: [] } }); // 인증 초기화
 
@@ -43,24 +44,33 @@ test.describe('교회어드민 인증', () => {
   });
 
   test('KNA_CA_003 | STAFF 계정 로그인 성공 → 교인/스태프/설정 메뉴 비노출', async ({ page }) => {
-    const staffEmail = testAccounts.churchStaff.email;
-    const staffPassword = testAccounts.churchStaff.password;
+    const churchCode = process.env.TEST_CHURCH_CODE ?? 'TEST_CHURCH';
+
+    // env에 STAFF 계정이 없으면 API로 임시 생성
+    let staffEmail = testAccounts.churchStaff.email;
+    let staffPassword = testAccounts.churchStaff.password;
+    let tempStaffId: string | null = null;
 
     if (!staffEmail || !staffPassword) {
-      test.skip();
-      return;
+      const staff = await createTestStaffAdmin(churchCode);
+      staffEmail = staff.email;
+      staffPassword = staff.password;
+      tempStaffId = staff.userId;
     }
 
-    const loginPage = new ChurchAdminLoginPage(page);
-    await loginPage.goto();
-    await loginPage.login(staffEmail, staffPassword);
-    await loginPage.expectRedirectToDashboard();
+    try {
+      const loginPage = new ChurchAdminLoginPage(page);
+      await loginPage.goto();
+      await loginPage.login(staffEmail, staffPassword);
+      await loginPage.expectRedirectToDashboard();
 
-    const dashboardPage = new ChurchAdminDashboardPage(page);
-    await dashboardPage.expectSidebarRole('STAFF');
+      const dashboardPage = new ChurchAdminDashboardPage(page);
+      await dashboardPage.expectSidebarRole('STAFF');
 
-    // STAFF는 OWNER 전용 메뉴 없어야 함
-    await expect(page.locator('aside').getByRole('link', { name: '교인 관리' })).not.toBeVisible();
+      await expect(page.locator('aside').getByRole('link', { name: '교인 관리' })).not.toBeVisible();
+    } finally {
+      if (tempStaffId) await deleteTestStaffAdmin(tempStaffId);
+    }
   });
 
   test('KNA_CA_004 | 잘못된 비밀번호 → 에러 메시지 표시', async ({ page }) => {

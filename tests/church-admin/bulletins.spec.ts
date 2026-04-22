@@ -38,6 +38,8 @@ function createTempImage(): string {
   return tmpPath;
 }
 
+test.describe.configure({ mode: 'serial' });
+
 test.describe('교회어드민 주보 관리', () => {
   let tmpPdf: string;
   let tmpImg: string;
@@ -121,16 +123,12 @@ test.describe('교회어드민 주보 관리', () => {
   });
 
   test('KNA_CA_026 | 주보 삭제 → confirm 다이얼로그 → 목록에서 제거', async ({ page }) => {
+    // serial 모드로 CA_022/023에서 업로드한 주보가 반드시 존재
     const bulletinsPage = new BulletinsPage(page);
     await bulletinsPage.goto();
 
     const deleteBtn = page.getByRole('button', { name: /삭제/ }).first();
-    const hasDelete = await deleteBtn.isVisible({ timeout: 3000 }).catch(() => false);
-
-    if (!hasDelete) {
-      test.skip();
-      return;
-    }
+    await expect(deleteBtn).toBeVisible({ timeout: 5000 });
 
     const firstTitle = await page.locator('[class*="font-medium"]').first().innerText().catch(() => '');
     page.once('dialog', (dialog) => dialog.accept());
