@@ -130,14 +130,13 @@ test.describe('교회어드민 주보 관리', () => {
     const deleteBtn = page.getByRole('button', { name: /삭제/ }).first();
     await expect(deleteBtn).toBeVisible({ timeout: 5000 });
 
-    const firstTitle = await page.locator('[class*="font-medium"]').first().innerText().catch(() => '');
+    const beforeCount = await page.getByRole('button', { name: /삭제/ }).count();
     page.once('dialog', (dialog) => dialog.accept());
     await deleteBtn.click();
     await page.waitForTimeout(500);
 
-    if (firstTitle) {
-      await expect(page.getByText(firstTitle)).not.toBeVisible({ timeout: 3000 });
-    }
+    const afterCount = await page.getByRole('button', { name: /삭제/ }).count();
+    expect(afterCount).toBe(beforeCount - 1);
   });
 
   test('KNA_CA_027 | 대시보드 최신 주보 섹션 → "전체 보기" 이동', async ({ page }) => {

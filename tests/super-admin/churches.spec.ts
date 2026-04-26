@@ -15,6 +15,9 @@ const NEW_CHURCH = {
   ownerPassword: 'Test1234!@',
 };
 
+// SA_016에서 캡처 → SA_017~022에서 재사용 (목록 is_active 필터 우회)
+let e2eChurchUrl = '';
+
 test.describe.configure({ mode: 'serial' });
 
 test.describe('슈퍼어드민 교회 관리', () => {
@@ -89,6 +92,8 @@ test.describe('슈퍼어드민 교회 관리', () => {
     const hasChurch = await e2eChurchLink.isVisible({ timeout: 3000 }).catch(() => false);
     if (!hasChurch) { test.skip(); return; }
 
+    // href로 미리 캡처 (클릭 후 page.url()은 리다이렉트로 list가 될 수 있음)
+    e2eChurchUrl = (await e2eChurchLink.getAttribute('href')) ?? '';
     await e2eChurchLink.click();
     await page.waitForLoadState('networkidle');
 
@@ -98,23 +103,10 @@ test.describe('슈퍼어드민 교회 관리', () => {
   });
 
   test('KNA_SA_017 | 교회 정지 처리 → 상태 "정지"로 변경', async ({ page }) => {
-    // 먼저 E2E 테스트로 등록한 교회를 찾아서 정지
-    await page.goto('/churches');
+    if (!e2eChurchUrl) { test.skip(); return; }
+    await page.goto(e2eChurchUrl);
     await page.waitForLoadState('networkidle');
 
-    const e2eChurchLink = page.getByRole('row', { name: new RegExp(NEW_CHURCH.churchName) })
-      .getByRole('link', { name: '상세' });
-
-    const hasChurch = await e2eChurchLink.isVisible({ timeout: 3000 }).catch(() => false);
-    if (!hasChurch) {
-      test.skip();
-      return;
-    }
-
-    await e2eChurchLink.click();
-    await page.waitForLoadState('networkidle');
-
-    // 현재 활성 상태 → 정지
     const toggleBtn = page.getByRole('button', { name: '교회 정지' });
     await toggleBtn.click();
 
@@ -123,12 +115,8 @@ test.describe('슈퍼어드민 교회 관리', () => {
   });
 
   test('KNA_SA_018 | 교회 활성화 → 상태 "활성"으로 변경', async ({ page }) => {
-    await page.goto('/churches');
-    await page.waitForLoadState('networkidle');
-
-    // serial 모드 — SA_015가 항상 먼저 교회를 생성하므로 반드시 존재
-    await page.getByRole('row', { name: new RegExp(NEW_CHURCH.churchName) })
-      .getByRole('link', { name: '상세' }).click();
+    if (!e2eChurchUrl) { test.skip(); return; }
+    await page.goto(e2eChurchUrl);
     await page.waitForLoadState('networkidle');
 
     const toggleBtn = page.getByRole('button', { name: '교회 활성화' });
@@ -147,20 +135,17 @@ test.describe('슈퍼어드민 교회 관리', () => {
   });
 
   test('KNA_SA_020 | 교회 상세 — 교회 삭제 버튼 표시', async ({ page }) => {
-    const churchesPage = new ChurchesPage(page);
-    await churchesPage.goto();
-    await page.getByRole('row', { name: new RegExp(NEW_CHURCH.churchName) })
-      .getByRole('link', { name: '상세' }).click();
+    if (!e2eChurchUrl) { test.skip(); return; }
+    await page.goto(e2eChurchUrl);
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByRole('button', { name: '교회 삭제' })).toBeVisible();
   });
 
   test('KNA_SA_021 | 교회 삭제 취소 → 페이지 유지', async ({ page }) => {
+    if (!e2eChurchUrl) { test.skip(); return; }
     const churchesPage = new ChurchesPage(page);
-    await churchesPage.goto();
-    await page.getByRole('row', { name: new RegExp(NEW_CHURCH.churchName) })
-      .getByRole('link', { name: '상세' }).click();
+    await page.goto(e2eChurchUrl);
     await page.waitForLoadState('networkidle');
 
     await churchesPage.clickDeleteChurch();
@@ -171,10 +156,9 @@ test.describe('슈퍼어드민 교회 관리', () => {
   });
 
   test('KNA_SA_022 | 교회 삭제 확인 → 목록으로 이동 & 해당 교회 미표시', async ({ page }) => {
+    if (!e2eChurchUrl) { test.skip(); return; }
     const churchesPage = new ChurchesPage(page);
-    await churchesPage.goto();
-    await page.getByRole('row', { name: new RegExp(NEW_CHURCH.churchName) })
-      .getByRole('link', { name: '상세' }).click();
+    await page.goto(e2eChurchUrl);
     await page.waitForLoadState('networkidle');
 
     await churchesPage.clickDeleteChurch();

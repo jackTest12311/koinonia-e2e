@@ -29,7 +29,7 @@ export class SuperAdminReportsPage {
       DISMISSED: '기각',
       ALL: '전체',
     };
-    await this.page.getByRole('button', { name: labelMap[status] }).click();
+    await this.page.getByRole('button', { name: labelMap[status] }).first().click();
     await this.page.waitForTimeout(300);
   }
 
@@ -57,7 +57,7 @@ export class SuperAdminReportsPage {
   }
 
   async expectReportVisible(title: string) {
-    await expect(this.page.getByText(title)).toBeVisible();
+    await expect(this.page.getByText(title).first()).toBeVisible();
   }
 
   async expectEmptyMessage() {

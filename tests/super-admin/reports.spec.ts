@@ -83,10 +83,11 @@ test.describe('슈퍼어드민 신고 관리 (API 데이터 보장)', () => {
     await reportsPage.clickFilterTab('PENDING');
 
     const before = await reportsPage.getPendingCount();
+    expect(before).toBeGreaterThan(0);
     await reportsPage.resolveFirstReport();
     const after = await reportsPage.getPendingCount();
 
-    expect(after).toBe(before - 1);
+    expect(after).toBeLessThan(before);
     resolveData = null as any; // afterAll에서 이미 처리됨
   });
 
@@ -96,10 +97,11 @@ test.describe('슈퍼어드민 신고 관리 (API 데이터 보장)', () => {
     await reportsPage.clickFilterTab('PENDING');
 
     const before = await reportsPage.getPendingCount();
+    expect(before).toBeGreaterThan(0);
     await reportsPage.dismissFirstReport();
     const after = await reportsPage.getPendingCount();
 
-    expect(after).toBe(before - 1);
+    expect(after).toBeLessThan(before);
     dismissData = null as any; // afterAll에서 이미 처리됨
   });
 

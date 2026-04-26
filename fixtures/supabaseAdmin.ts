@@ -175,6 +175,7 @@ export async function createTestStaffAdmin(churchCode: string): Promise<TestStaf
     email,
     password,
     email_confirm: true,
+    user_metadata: { name: 'E2E스태프', nickname: `e2e_staff_${Date.now()}` },
   });
   if (error || !authUser?.user) throw new Error(`STAFF 유저 생성 실패: ${error?.message}`);
 
@@ -225,12 +226,14 @@ export async function createTestMember(
     .single();
   if (!church) throw new Error(`교회를 찾을 수 없습니다: ${churchCode}`);
 
-  const email = `e2e_member_${Date.now()}_${Math.random().toString(36).slice(2, 6)}@test.com`;
+  const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const email = `e2e_member_${suffix}@test.com`;
 
   const { data: authUser, error } = await supabase.auth.admin.createUser({
     email,
     password: 'Test1234!@',
     email_confirm: true,
+    user_metadata: { name: `E2E교인_${suffix}`, nickname: `e2e_m_${suffix}` },
   });
   if (error || !authUser?.user) throw new Error(`테스트 유저 생성 실패: ${error?.message}`);
 
@@ -245,13 +248,7 @@ export async function createTestMember(
 
   const { data: membership } = await supabase
     .from('memberships')
-    .insert({
-      user_id: userId,
-      church_id: church.id,
-      status,
-      role,
-      name: `E2E테스터_${Date.now()}`,
-    })
+    .insert({ user_id: userId, church_id: church.id, status, role })
     .select('id')
     .single();
 
